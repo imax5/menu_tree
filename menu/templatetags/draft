@@ -1,0 +1,98 @@
+from django import template
+from ..models import Menu
+
+register = template.Library()
+
+@register.simple_tag(takes_context=True)
+def draw_menu(context, menu_name: str):
+    menu_list = Menu.objects.filter(name=menu_name).prefetch_related('children')
+    url = context['request'].path
+    if url:
+        url = url.split('/')[1]
+
+    html = f'<ul class="{menu_name}">'
+    for m in menu_list:
+        html += '<li class="active">' if url in (m['url'], m['name']) else '<li>'
+        html += f'<a href="/{m["url"]}">{m["name"]}</a>'
+        html += '</li>'
+    html += '</ul>'
+
+    menu_tree = get_menu_tree(menu_name_or_url)
+    requested_url = context['request'].path
+    for item in menu_tree:
+        if item['url'] == requested_url or item['name'] == requested_url:
+            item['is_active'] = True
+            break
+
+    # Render the menu tree as HTML
+    menu_html = ''
+    for item in menu_tree:
+        menu_html += '<li class="{% if item.is_active %}active{% endif %}">'
+        menu_html += '<a href="{% if item.url %} {{ item.url }} {% else %} # {% endif %}">{{ item.name }}</a>'
+        if item['children']:
+            menu_html += '<ul class="submenu">'
+            for child in item['children']:
+                menu_html += _render_child(child)
+            menu_html += '</ul>'
+        menu_html += '</li>'
+
+    return menu_html
+
+def render_html(url, menu_name, menu_list) -> str:
+    html = f'<ul class="{menu_name}">'
+    for menu in menu_list:
+        html += '<li class="active">' if url in (menu['url'], menu['name']) else '<li>'
+        html += render_html(url, menu['name'], menu['children']) if menu['children'] \
+            else f'<a href="/{menu["url"]}">{menu["name"]}</a>'
+        html += '</li>'
+    html += '</ul>'
+
+    return html
+
+def _render_child(child_item):
+    # This function can handle rendering child items with proper indentation etc.
+    child_html = '<li>'
+    child_html += '<a href="{% if child_item.url %} {{ child_item.url }} {% else %} # {% endif %}">{{ child_item.name }}</a>'
+    if child_item['children']:
+        child_html += '<ul class="submenu">'
+        for grandchild in child_item['children']:
+            child_html += _render_child(grandchild)
+        child_html += '</ul>'
+    child_html += '</li>'
+    return child_html
+
+def get_menu_tree(menu_name_or_url: str):
+    menu_name = None
+    # Try to extract menu name from URL (assuming a specific format)
+    if menu_name_or_url.isalnum():  # Check if alphanumeric (for simple URL-based naming)
+        menu_name = menu_name_or_url
+    else:
+        # If not alphanumeric, assume it's a URL and try to extract the menu name (implementation may vary)
+        # You might need to parse the URL based on your specific URL structure
+        # For example (assuming URLs have format /menu_name/):
+        url_parts = menu_name_or_url.split('/')
+        if len(url_parts) > 1:
+            menu_name = url_parts[1]
+
+    if not menu_name:
+        # Handle case where no menu name or URL is provided (optional)
+        return None
+
+    menu_items = Menu.objects.filter(name=menu_name).prefetch_related('children')
+    all_menu_items = dict()
+
+    def get_item_data(item: Menu):
+        if item.pk not in all_menu_items:
+            item_data = {
+                'id': item.pk,
+                'name': item.name,
+                'url': item.url,
+                'is_active': False,  # Set is_active to False initially
+                'children': [],
+            }
+            all_menu_items[item.pk] = item_data
+            item_data['children'] = [get_item_data(child) for child in item.children]
+        return all_menu_items[item.pk]
+
+    menu_tree = [get_item_data(item) for item in menu_items]
+    return menu_tree

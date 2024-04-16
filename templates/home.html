@@ -1,0 +1,17 @@
+{% load menu_drawer %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Menu Example</title>
+</head>
+<body>
+    <h1>My Website</h1>
+    {% autoescape off %}
+    {% draw_menu 'main_menu' %}
+    {% endautoescape %}
+
+    {% autoescape off %}
+    {% draw_menu 'other_menu' %}
+    {% endautoescape %}
+</body>
+</html>
