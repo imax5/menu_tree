@@ -7,14 +7,13 @@ register = template.Library()
 @register.simple_tag(takes_context=True)
 def draw_menu(context, menu_name: str) -> str:
     """
-    Отображает меню на основе предоставленного имени меню.
+    Draws a menu based on the provided menu name.
+    Options:
+        context (dict): The context containing the request.
+        menu_name (str): Name of the menu to display.
     
-    Параметры:
-        context (dict): Контекст, содержащий запрос.
-        menu_name (str): Имя меню для отображения.
-    
-    Возвращает:
-        str: Отображенный HTML-код меню.
+    Returns:
+        str: The rendered HTML code of the menu.
     """
     global menu_list, active_url, tree
     menu_list = Menu.objects.all()
@@ -33,13 +32,14 @@ def draw_menu(context, menu_name: str) -> str:
 
 def _build_menu_tree(parent: Menu) -> bool:
     """
-    Рекурсивно строит дерево меню, начиная с заданного родительского меню.
+    Recursively builds a menu tree starting
+    from a given parent menu until it finds active_url.
 
-    Параметры:
-        parent (Menu): Родительское меню, с которого начинается построение дерева.
+    Options:
+        parent (Menu): The parent menu from which to start building the tree.
 
-    Возвращает:
-        bool: True, если дерево меню успешно построено, False в противном случае.
+    Returns:
+        bool: True if the menu tree was successfully built, False otherwise.
     """
     global menu_list, active_url, tree
     for menu in menu_list:
@@ -57,13 +57,12 @@ def _build_menu_tree(parent: Menu) -> bool:
 
 def _render_html(parent: Menu) -> str:
     """
-    Отображает HTML-разметку для меню на основе предоставленного родительского меню.
+    Renders HTML markup for a menu based on the tree that was build before.
+    Options:
+        parent (Menu): The parent menu from which to start building the tree.
 
-    Параметры:
-        parent (Menu): Родительское меню, с которого начинается построение дерева.
-
-    Возвращает:
-        str: Строковое представление меню в HTML-формате.
+    Returns:
+        str: String representation of the menu in HTML format.
     """
     global menu_list, tree
     html = f'<ul class="{parent.name}">'
